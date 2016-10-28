@@ -1,7 +1,6 @@
 import { getActionsArray, evalAction } from 'remotedev-utils';
 import createStore from '../../../app/stores/createStore';
 import configureStore  from '../../../app/stores/enhancerStore';
-import { isAllowed } from '../options/syncOptions';
 import Monitor from '../../../app/service/Monitor';
 import {
   updateStore, toContentScript, sendMessage, setListener, connect, disconnect,
@@ -10,28 +9,16 @@ import {
 
 let stores = {};
 
-const devToolsExtension = function(reducer, preloadedState, config) {
-  config = reducer; reducer = undefined;
-
-  let store;
-  const instanceId = generateId(config.instanceId);
-
+const devToolsExtension = function(reducer) {
+  const instanceId = generateId(reducer.instanceId);
   const monitor = new Monitor();
-  if (config.getMonitor) config.getMonitor(monitor);
 
-  const enhance = () => (next) => {
+  return (next) => {
     return (reducer_, initialState_, enhancer_) => {
-      if (!isAllowed(window.devToolsOptions)) return next(reducer_, initialState_, enhancer_);
-
-      store = stores[instanceId] =
-        configureStore(next, monitor.reducer, config)(reducer_, initialState_, enhancer_);
-
-      return store;
-    };
-  };
-
-  if (!reducer) return enhance();
-  return createStore(reducer, preloadedState, enhance);
+      return stores[instanceId] =
+        configureStore(next, monitor.reducer, reducer)(reducer_, initialState_, enhancer_);
+    }
+  }
 };
 
 window.__REDUX_DEVTOOLS_EXTENSION__ = window.devToolsExtension;
